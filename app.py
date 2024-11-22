@@ -7,6 +7,7 @@ import random
 import hashlib
 import json
 from functools import lru_cache
+from datetime import datetime
 
 load_dotenv()
 
@@ -81,39 +82,34 @@ def generate_speech(text):
 
 @app.route('/generate-meditation', methods=['POST'])
 def generate_meditation():
+    """Generate meditation audio from user input"""
     try:
         data = request.get_json()
         user_input = data.get('input', '')
+
+        if not user_input:
+            return 'No input provided', 400
+
+        # Generate meditation text
+        meditation_text = generate_meditation_text(user_input)
         
-        # Check cache first
-        cached_response = get_cached_meditation(user_input)
-        if cached_response:
-            return jsonify(cached_response)
+        # Generate speech in a separate thread to not block
+        speech_response = generate_speech(meditation_text)
         
-        # Generate new meditation if not cached
-        meditation_script = generate_meditation_text(user_input)
-        speech_response = generate_speech(meditation_script)
+        # Save the audio file
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        audio_filename = f'meditation_{timestamp}.mp3'
+        audio_path = os.path.join(app.static_folder, audio_filename)
         
-        # Select a random background track
-        background_track = random.choice(BACKGROUND_MUSIC_FILES)
+        with open(audio_path, 'wb') as f:
+            speech_response.stream_to_file(audio_path)
         
-        # Save the audio temporarily
-        speech_file_path = os.path.join(static_dir, 'temp_meditation.mp3')
-        speech_response.stream_to_file(speech_file_path)
-        
-        response_data = {
-            "script": meditation_script,
-            "audio_url": "/static/temp_meditation.mp3",
-            "background_music": background_track
-        }
-        
-        # Save to cache
-        save_to_cache(user_input, response_data)
-        
-        return jsonify(response_data)
-    
+        # Return the URL for the generated audio file
+        return f'/static/{audio_filename}'
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error generating meditation: {str(e)}")
+        return str(e), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

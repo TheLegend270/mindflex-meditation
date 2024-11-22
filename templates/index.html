@@ -122,233 +122,125 @@
     <img src="/static/Logo.png" alt="MindFlex Logo" class="logo">
     <div class="container">
         <div class="input-container">
-            <textarea id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." rows="3"></textarea>
-            <button id="generate-btn" class="play-button">
-                <i class="fas fa-play"></i>
+            <textarea id="meditationInput" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." rows="3"></textarea>
+            <button id="playButton" class="play-button">
+                ▶
             </button>
         </div>
     </div>
     <script>
+        let isPlaying = false;
         let meditationAudio = new Audio();
         let backgroundMusic = new Audio();
-        const generateBtn = document.getElementById('generate-btn');
-        const userInput = document.getElementById('user-input');
-        let meditationScript = '';
-        let isPlaying = false;
-        let audioContext;
-        let backgroundBuffer;
-        
-        // Auto-resize textarea
-        userInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            const height = Math.min(150, Math.max(80, this.scrollHeight));
-            this.style.height = height + 'px';
-        });
-        
-        // Pre-load background music files
-        const backgroundMusicFiles = [
-            '/static/background_music.mp3',
-            '/static/green-hang-handpan-hangdrum-1765.mp3',
-            '/static/relaxing-handpan-music-8d-surround-233447.mp3'
+        const musicTracks = [
+            'static/background_music.mp3',
+            'static/green-hang-handpan-hangdrum-1765.mp3',
+            'static/relaxing-handpan-music-8d-surround-233447.mp3'
         ];
-        
-        async function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            try {
-                // Pre-load all background music files
-                for (const musicFile of backgroundMusicFiles) {
-                    const response = await fetch(musicFile);
-                    const arrayBuffer = await response.arrayBuffer();
-                    await audioContext.decodeAudioData(arrayBuffer);
-                }
-            } catch (error) {
-                console.error('Error pre-loading background music:', error);
-            }
+
+        // Preload a random background music track when page loads
+        window.onload = function() {
+            const randomTrack = musicTracks[Math.floor(Math.random() * musicTracks.length)];
+            backgroundMusic.src = randomTrack;
+            backgroundMusic.load();
+            backgroundMusic.volume = 0.08;
+            backgroundMusic.playbackRate = 0.8;
         }
-        
-        // Initialize audio on page load
-        window.addEventListener('load', initAudio);
-        
+
         function setButtonState(state) {
-            const icon = generateBtn.querySelector('i');
-            generateBtn.disabled = false;
-            
-            switch(state) {
-                case 'loading':
-                    icon.className = 'fas fa-spinner loading';
-                    generateBtn.disabled = true;
-                    break;
-                case 'play':
-                    icon.className = 'fas fa-play';
-                    break;
-                case 'pause':
-                    icon.className = 'fas fa-pause';
-                    break;
-            }
+            const button = document.getElementById('playButton');
+            button.innerHTML = state === 'play' ? '▶' : state === 'pause' ? '⏸' : '⌛';
+            button.disabled = state === 'loading';
         }
 
-        async function playMeditation(audioUrl, isNewMeditation = false) {
-            // If it's a new meditation, cancel any existing one
-            if (isNewMeditation) {
-                meditationAudio.pause();
-                meditationAudio.currentTime = 0;
-                backgroundMusic.pause();
-                backgroundMusic.currentTime = 0;
-            }
-
-            // If we're already playing and it's not a new meditation, just return
-            if (isPlaying && !isNewMeditation) {
-                return;
-            }
-
-            // Set up background music
-            backgroundMusic.volume = 0.08;  // 8% volume
-            backgroundMusic.playbackRate = 0.8;  // Music speed at 80%
-
-            try {
-                // Show loading for 4 seconds, then start music
-                await new Promise(resolve => setTimeout(resolve, 4000));
-                backgroundMusic.play().catch(error => {
-                    console.error('Background music playback error:', error);
-                });
-                setButtonState('pause');
-                isPlaying = true;
-
-                // Set up meditation audio
-                if (isNewMeditation) {
-                    try {
-                        // Pre-load meditation audio in background
-                        const response = await fetch(audioUrl);
-                        const blob = await response.blob();
-                        meditationAudio.src = URL.createObjectURL(blob);
-                        await meditationAudio.load();
-                        
-                        meditationAudio.onended = () => {
-                            fadeOutBackgroundMusic();
-                            setButtonState('play');
-                            isPlaying = false;
-                        };
-
-                        // Start meditation audio when ready
-                        meditationAudio.play().catch(error => {
-                            console.error('Meditation audio playback error:', error);
-                        });
-                    } catch (error) {
-                        console.error('Error loading meditation audio:', error);
-                    }
-                }
-            } catch (error) {
-                console.error('Playback error:', error);
-                setButtonState('play');
-            }
-        }
-
-        function fadeOutBackgroundMusic() {
-            const fadeOutDuration = 30000; // 30 seconds
-            const startVolume = backgroundMusic.volume;
-            const fadeSteps = 100;
-            const volumeStep = startVolume / fadeSteps;
-            const stepDuration = fadeOutDuration / fadeSteps;
-
-            let currentStep = 0;
-            const fadeInterval = setInterval(() => {
-                currentStep++;
-                if (currentStep >= fadeSteps) {
-                    clearInterval(fadeInterval);
-                    backgroundMusic.pause();
-                    backgroundMusic.currentTime = 0;
-                } else {
-                    backgroundMusic.volume = startVolume - (currentStep * volumeStep);
-                }
-            }, stepDuration);
-        }
-
-        function pauseMeditation() {
-            meditationAudio.pause();
-            backgroundMusic.pause();
-            setButtonState('play');
-            isPlaying = false;
-        }
-
-        function resumeMeditation() {
-            Promise.all([
-                meditationAudio.play(),
-                backgroundMusic.play()
-            ]).then(() => {
-                setButtonState('pause');
-                isPlaying = true;
-            }).catch(error => {
-                console.error('Resume playback error:', error);
-                setButtonState('play');
-            });
-        }
-
-        generateBtn.addEventListener('click', async () => {
-            const userInput = document.getElementById('user-input').value;
-            
-            // If we already have a meditation playing
-            if (meditationScript) {
-                if (isPlaying) {
-                    pauseMeditation();
-                } else {
-                    resumeMeditation();
-                }
-                return;
-            }
-
-            if (!userInput.trim()) {
+        async function generateMeditation() {
+            const input = document.getElementById('meditationInput').value;
+            if (!input.trim()) {
                 alert('Please enter your meditation topic.');
                 return;
             }
 
             setButtonState('loading');
-
+            
             try {
-                // Start loading background music while waiting for the meditation
-                initAudio();
+                // Start 4-second loading animation and request meditation in parallel
+                const [_, response] = await Promise.all([
+                    new Promise(resolve => setTimeout(resolve, 4000)),
+                    fetch('/generate-meditation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ input: input })
+                    })
+                ]);
 
-                const response = await fetch('/generate-meditation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ input: userInput }),
-                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const audioUrl = await response.text();
+                
+                // Start music immediately after loading animation
+                backgroundMusic.play().catch(console.error);
+                setButtonState('pause');
+                isPlaying = true;
 
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                // Load and play meditation audio in background
+                try {
+                    const audioResponse = await fetch(audioUrl);
+                    const blob = await audioResponse.blob();
+                    meditationAudio.src = URL.createObjectURL(blob);
+                    await meditationAudio.load();
+                    meditationAudio.play().catch(console.error);
+                    
+                    meditationAudio.onended = () => {
+                        fadeOutBackgroundMusic();
+                        setButtonState('play');
+                        isPlaying = false;
+                    };
+                } catch (error) {
+                    console.error('Error loading meditation audio:', error);
                 }
-
-                const data = await response.json();
-                meditationScript = data.script;
-                
-                // Set up background music source
-                backgroundMusic.src = `/static/${data.background_music}`;
-                
-                // Start playing the meditation with the new audio URL
-                playMeditation(data.audio_url, true);
-
             } catch (error) {
                 console.error('Error:', error);
-                alert('Failed to generate meditation. Please try again.');
                 setButtonState('play');
             }
-        });
+        }
 
-        // Clean up on page unload
-        window.addEventListener('beforeunload', () => {
-            if (meditationAudio) {
+        async function togglePlayPause() {
+            if (!meditationAudio.src) {
+                await generateMeditation();
+                return;
+            }
+
+            if (isPlaying) {
                 meditationAudio.pause();
-            }
-            if (backgroundMusic) {
                 backgroundMusic.pause();
+                setButtonState('play');
+            } else {
+                try {
+                    await Promise.all([
+                        backgroundMusic.play(),
+                        meditationAudio.play()
+                    ]);
+                    setButtonState('pause');
+                } catch (error) {
+                    console.error('Error resuming playback:', error);
+                }
             }
-            if (audioContext) {
-                audioContext.close();
-            }
-        });
+            isPlaying = !isPlaying;
+        }
+
+        function fadeOutBackgroundMusic() {
+            const fadeInterval = setInterval(() => {
+                if (backgroundMusic.volume > 0.01) {
+                    backgroundMusic.volume -= 0.01;
+                } else {
+                    backgroundMusic.pause();
+                    backgroundMusic.volume = 0.08; // Reset volume for next play
+                    clearInterval(fadeInterval);
+                }
+            }, 50);
+        }
+
+        document.getElementById('playButton').addEventListener('click', togglePlayPause);
     </script>
 </body>
 </html>

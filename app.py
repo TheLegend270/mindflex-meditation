@@ -75,7 +75,7 @@ def generate_speech(text):
     return client.audio.speech.create(
         model="tts-1",
         voice="onyx",
-        speed=0.7,  # Slowing down the speech to 70% of normal speed
+        speed=0.8,  # Setting speech speed to 80% of normal speed
         input=text
     )
 

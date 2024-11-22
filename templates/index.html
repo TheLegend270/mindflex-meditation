@@ -30,9 +30,10 @@
         }
         .container {
             max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
             width: 100%;
             background: rgba(38, 100, 134, 0.95);
-            padding: 30px;
             border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
             display: flex;
@@ -52,17 +53,22 @@
             border: 1px solid #0B446F;
             border-radius: 8px;
             resize: none;
-            min-height: 60px;
+            min-height: 80px;
+            height: auto;
             max-height: 150px;
             background: #0B446F;
             color: white;
             font-family: inherit;
-            font-size: inherit;
+            font-size: 16px;
             line-height: 1.5;
             overflow-y: auto;
+            width: calc(100% - 70px); /* Account for button width and gap */
+            box-sizing: border-box;
         }
         textarea::placeholder {
             color: rgba(255, 255, 255, 0.6);
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
         }
         .play-button {
             background: #13db9e;
@@ -98,13 +104,25 @@
         .loading {
             animation: spin 1s linear infinite;
         }
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            textarea {
+                font-size: 14px;
+                min-height: 100px;
+            }
+            .input-container {
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <img src="/static/Logo.png" alt="MindFlex Logo" class="logo">
     <div class="container">
         <div class="input-container">
-            <textarea id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." rows="2"></textarea>
+            <textarea id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." rows="3"></textarea>
             <button id="generate-btn" class="play-button">
                 <i class="fas fa-play"></i>
             </button>
@@ -123,7 +141,7 @@
         // Auto-resize textarea
         userInput.addEventListener('input', function() {
             this.style.height = 'auto';
-            const height = Math.min(150, Math.max(60, this.scrollHeight));
+            const height = Math.min(150, Math.max(80, this.scrollHeight));
             this.style.height = height + 'px';
         });
         
@@ -207,15 +225,14 @@
             }
 
             // Set up background music
-            backgroundMusic.volume = 0.05;  // Changed to 5% volume
-            backgroundMusic.playbackRate = 0.8;  // Slowing down music to 80% speed
+            backgroundMusic.volume = 0.08;  // Changed to 8% volume
+            backgroundMusic.playbackRate = 0.8;  // Music speed at 80%
 
             try {
-                // Start both audio streams
-                await Promise.all([
-                    backgroundMusic.play(),
-                    meditationAudio.play()
-                ]);
+                // Start both audio streams with delay for background music
+                await new Promise(resolve => setTimeout(resolve, 9000)); // Wait 9 seconds
+                await backgroundMusic.play();
+                await meditationAudio.play();
                 setButtonState('pause');
                 isPlaying = true;
             } catch (error) {

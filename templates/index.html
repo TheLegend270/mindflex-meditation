@@ -170,26 +170,33 @@
         async function generateMeditation() {
             const input = document.getElementById('meditationInput').value;
             if (!input.trim()) {
-                alert('Please enter your meditation topic.');
                 return;
             }
 
             setButtonState('loading');
             
             try {
-                // Start 4-second loading animation
-                await new Promise(resolve => setTimeout(resolve, 4000));
+                // Start background music immediately
+                backgroundMusic.currentTime = 0;
+                backgroundMusic.volume = 0.2;
+                const playPromise = backgroundMusic.play();
                 
-                // Start music immediately after loading animation
-                backgroundMusic.play().catch(console.error);
-                setButtonState('pause');
-                isPlaying = true;
+                if (playPromise !== undefined) {
+                    playPromise.then(_ => {
+                        // Music started successfully
+                        setButtonState('pause');
+                    }).catch(error => {
+                        console.error("Music playback failed:", error);
+                    });
+                }
 
-                // Start streaming meditation audio
+                // Start streaming meditation
                 const response = await fetch('/stream-meditation', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: input })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ input })
                 });
 
                 if (!response.ok) throw new Error('Network response was not ok');
@@ -238,55 +245,40 @@
                     }
                 });
 
-                meditationAudio.onended = () => {
-                    fadeOutBackgroundMusic();
-                    setButtonState('play');
-                    isPlaying = false;
-                };
-
             } catch (error) {
                 console.error('Error:', error);
                 setButtonState('play');
             }
         }
 
-        async function togglePlayPause() {
-            if (!meditationAudio.src) {
-                await generateMeditation();
-                return;
-            }
-
-            if (isPlaying) {
-                meditationAudio.pause();
-                backgroundMusic.pause();
-                setButtonState('play');
+        // Handle play/pause button
+        document.getElementById('playButton').addEventListener('click', function() {
+            if (this.innerHTML === '▶') {
+                generateMeditation();
             } else {
-                try {
-                    await Promise.all([
-                        backgroundMusic.play(),
-                        meditationAudio.play()
-                    ]);
-                    setButtonState('pause');
-                } catch (error) {
-                    console.error('Error resuming playback:', error);
-                }
+                backgroundMusic.pause();
+                meditationAudio.pause();
+                setButtonState('play');
             }
-            isPlaying = !isPlaying;
-        }
+        });
 
-        function fadeOutBackgroundMusic() {
-            const fadeInterval = setInterval(() => {
-                if (backgroundMusic.volume > 0.01) {
-                    backgroundMusic.volume -= 0.01;
-                } else {
-                    backgroundMusic.pause();
-                    backgroundMusic.volume = 0.08; // Reset volume for next play
-                    clearInterval(fadeInterval);
-                }
-            }, 50);
-        }
+        // Add event listener for meditation audio end
+        meditationAudio.addEventListener('ended', () => {
+            backgroundMusic.pause();
+            setButtonState('play');
+        });
 
-        document.getElementById('playButton').addEventListener('click', togglePlayPause);
+        // Add event listener for meditation audio pause
+        meditationAudio.addEventListener('pause', () => {
+            if (!meditationAudio.ended) {
+                setButtonState('play');
+            }
+        });
+
+        // Add event listener for meditation audio play
+        meditationAudio.addEventListener('play', () => {
+            setButtonState('pause');
+        });
     </script>
 </body>
 </html>

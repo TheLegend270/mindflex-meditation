@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindflex Meditation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: url('/static/background.png') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .logo {
+            width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: rgba(38, 100, 134, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        .input-container {
+            display: flex;
+            width: 100%;
+            gap: 20px;
+            align-items: center;
+        }
+        textarea {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #0B446F;
+            border-radius: 8px;
+            resize: none;
+            height: 100px;
+            background: #0B446F;
+            color: white;
+        }
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .play-button {
+            background: #13db9e;
+            color: white;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+        .play-button:hover {
+            background: #10b583;
+            transform: scale(1.05);
+        }
+        .play-button:disabled {
+            background: #13db9e;
+            cursor: wait;
+            opacity: 0.8;
+        }
+        .play-button i {
+            margin-left: 4px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <img src="/static/Logo.png" alt="MindFlex Logo" class="logo">
+    <div class="container">
+        <div class="input-container">
+            <textarea id="user-input" placeholder="Insert the stressor, the appraisal and the consequence the user is facing in order to generate a mindflex meditation... (this process will be automated later)"></textarea>
+            <button id="generate-btn" class="play-button">
+                <i class="fas fa-play"></i>
+            </button>
+        </div>
+    </div>
+    <script>
+        let currentUtterance = null;
+        const synth = window.speechSynthesis;
+        let backgroundMusic = new Audio();
+        const generateBtn = document.getElementById('generate-btn');
+        let meditationScript = '';
+        let isPlaying = false;
+        
+        function setButtonState(state) {
+            const icon = generateBtn.querySelector('i');
+            generateBtn.disabled = false;
+            
+            switch(state) {
+                case 'loading':
+                    icon.className = 'fas fa-spinner loading';
+                    generateBtn.disabled = true;
+                    break;
+                case 'play':
+                    icon.className = 'fas fa-play';
+                    break;
+                case 'pause':
+                    icon.className = 'fas fa-pause';
+                    break;
+            }
+        }
+
+        function playMeditation(text, isNewMeditation = false) {
+            // If it's a new meditation, cancel any existing one
+            if (isNewMeditation) {
+                if (currentUtterance && speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                }
+                if (backgroundMusic) {
+                    backgroundMusic.pause();
+                    backgroundMusic.currentTime = 0;
+                }
+            }
+
+            // If we're already playing and it's not a new meditation, just return
+            if (isPlaying && !isNewMeditation) {
+                return;
+            }
+
+            // Create new utterance only if it's a new meditation or we don't have one
+            if (isNewMeditation || !currentUtterance) {
+                currentUtterance = new SpeechSynthesisUtterance(text);
+                currentUtterance.rate = 0.9;
+                currentUtterance.pitch = 1;
+                currentUtterance.volume = 1.0;
+
+                currentUtterance.onstart = () => {
+                    setButtonState('pause');
+                    isPlaying = true;
+                };
+
+                currentUtterance.onend = () => {
+                    // Start fading out the background music
+                    fadeOutBackgroundMusic();
+                    setButtonState('play');
+                    isPlaying = false;
+                };
+
+                currentUtterance.onerror = (event) => {
+                    console.error('Speech synthesis error:', event);
+                    setButtonState('play');
+                    isPlaying = false;
+                };
+            }
+
+            // Set up background music
+            backgroundMusic.volume = 0.15;
+
+            // Start playback
+            try {
+                backgroundMusic.play();
+                synth.cancel(); // Cancel any ongoing speech
+                setTimeout(() => {
+                    synth.speak(currentUtterance);
+                }, 4000); // Changed from 2000 to 4000 for 4-second delay
+            } catch (error) {
+                console.error('Playback error:', error);
+                setButtonState('play');
+            }
+        }
+
+        function fadeOutBackgroundMusic() {
+            const fadeOutDuration = 30000; // 30 seconds in milliseconds
+            const startVolume = backgroundMusic.volume;
+            const fadeSteps = 100; // Number of steps for smooth fade
+            const volumeStep = startVolume / fadeSteps;
+            const stepDuration = fadeOutDuration / fadeSteps;
+
+            let currentStep = 0;
+            
+            const fadeInterval = setInterval(() => {
+                currentStep++;
+                if (currentStep <= fadeSteps) {
+                    backgroundMusic.volume = startVolume - (volumeStep * currentStep);
+                } else {
+                    clearInterval(fadeInterval);
+                    backgroundMusic.pause();
+                    backgroundMusic.currentTime = 0;
+                    backgroundMusic.volume = 0.15; // Reset volume for next use
+                }
+            }, stepDuration);
+        }
+
+        function pauseMeditation() {
+            if (currentUtterance) {
+                speechSynthesis.pause();
+            }
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+            }
+            isPlaying = false;
+            setButtonState('play');
+        }
+
+        function resumeMeditation() {
+            if (currentUtterance) {
+                speechSynthesis.resume();
+                backgroundMusic.play();
+                isPlaying = true;
+                setButtonState('pause');
+            }
+        }
+
+        generateBtn.addEventListener('click', async () => {
+            // If we already have a meditation script
+            if (meditationScript) {
+                if (isPlaying) {
+                    pauseMeditation();
+                } else {
+                    resumeMeditation();
+                }
+                return;
+            }
+
+            const userInput = document.getElementById('user-input').value;
+            if (!userInput) return;
+
+            setButtonState('loading');
+
+            try {
+                const response = await fetch('/generate-meditation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ input: userInput })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                // Store the script but don't display it
+                meditationScript = data.script;
+
+                // Set up background music
+                backgroundMusic.src = `/static/${data.background_music}`;
+                backgroundMusic.loop = true;
+
+                // Play meditation immediately
+                playMeditation(meditationScript, true);
+            } catch (error) {
+                alert('Error generating meditation: ' + error.message);
+                setButtonState('play');
+            }
+        });
+
+        // Fix for Chrome's speech synthesis issue
+        window.onbeforeunload = () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+        };
+    </script>
+</body>
+</html>

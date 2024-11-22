@@ -44,18 +44,25 @@
             display: flex;
             width: 100%;
             gap: 20px;
-            align-items: center;
+            align-items: flex-start;
         }
-        input {
+        textarea {
             flex: 1;
             padding: 15px;
             border: 1px solid #0B446F;
             border-radius: 8px;
+            resize: none;
+            min-height: 60px;
+            max-height: 150px;
             background: #0B446F;
             color: white;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: 1.5;
+            overflow-y: auto;
         }
-        input::placeholder {
-            color: rgba(255, 255, 255, 0.9);
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
         }
         .play-button {
             background: #13db9e;
@@ -97,7 +104,7 @@
     <img src="/static/Logo.png" alt="MindFlex Logo" class="logo">
     <div class="container">
         <div class="input-container">
-            <input type="text" id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." />
+            <textarea id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." rows="2"></textarea>
             <button id="generate-btn" class="play-button">
                 <i class="fas fa-play"></i>
             </button>
@@ -107,10 +114,18 @@
         let meditationAudio = new Audio();
         let backgroundMusic = new Audio();
         const generateBtn = document.getElementById('generate-btn');
+        const userInput = document.getElementById('user-input');
         let meditationScript = '';
         let isPlaying = false;
         let audioContext;
         let backgroundBuffer;
+        
+        // Auto-resize textarea
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            const height = Math.min(150, Math.max(60, this.scrollHeight));
+            this.style.height = height + 'px';
+        });
         
         // Pre-load background music files
         const backgroundMusicFiles = [
@@ -192,7 +207,7 @@
             }
 
             // Set up background music
-            backgroundMusic.volume = 0.15;
+            backgroundMusic.volume = 0.10;
 
             try {
                 // Start both audio streams

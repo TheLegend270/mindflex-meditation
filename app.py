@@ -74,8 +74,8 @@ def generate_speech(text):
     """Generate speech using OpenAI TTS"""
     return client.audio.speech.create(
         model="tts-1",
-        voice="shimmer",
-        speed=0.85,  # Slowing down the speech to 85% of normal speed
+        voice="onyx",
+        speed=0.95,  # Slowing down the speech to 95% of normal speed
         input=text
     )
 

@@ -4,7 +4,6 @@ from functools import reduce
 from typing import Callable, Generator
 import openai
 from flask import Response
-import pyaudio
 
 # Constants
 DELIMITERS = [f"{d} " for d in (".", "?", "!")]  # Determine where one phrase ends

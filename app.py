@@ -8,6 +8,7 @@ import hashlib
 import json
 from functools import lru_cache
 from datetime import datetime
+from streaming import StreamingManager
 
 load_dotenv()
 
@@ -15,6 +16,7 @@ app = Flask(__name__)
 CORS(app)
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+streaming_manager = StreamingManager(client)
 
 # Ensure static directory exists
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
@@ -59,61 +61,20 @@ def home():
 def serve_static(filename):
     return send_from_directory('static', filename)
 
-def generate_meditation_text(user_input):
-    """Generate meditation text using OpenAI"""
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        temperature=0.7,
-        messages=[
-            {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English. Then, provide the ENTIRE meditation in that same language, including the introduction. For English, start with 'This is your meditation about [topic] which intends to [intention]...'. For German, start with 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]...'. NEVER mix languages - if the input is German, the entire meditation must be in German, if it's English, everything must be in English. Keep the language simple, direct, and add '...' after each sentence to create natural pauses. This helps create a slower, more meditative pace."},
-            {"role": "user", "content": f"Create a meditation script based on: {user_input}"}
-        ]
-    )
-    return response.choices[0].message.content
+SYSTEM_PROMPT = """You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English. Then, provide the ENTIRE meditation in that same language, including the introduction. 
 
-def generate_speech(text):
-    """Generate speech using OpenAI TTS"""
-    return client.audio.speech.create(
-        model="tts-1",
-        voice="onyx",
-        speed=0.9,  # Setting speech speed to 90% of normal speed
-        input=text
-    )
+For English, start with 'This is your meditation about [topic] which intends to [intention]...'. 
+For German, start with 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]...'. 
 
-@app.route('/generate-meditation', methods=['POST'])
-def generate_meditation():
-    """Generate meditation audio from user input"""
-    try:
-        data = request.get_json()
-        user_input = data.get('input', '')
+NEVER mix languages - if the input is German, the entire meditation must be in German, if it's English, everything must be in English. 
 
-        if not user_input:
-            return 'No input provided', 400
+Keep the language simple and direct. Add '...' after each sentence to create natural pauses. This helps create a slower, more meditative pace.
 
-        # Generate meditation text
-        meditation_text = generate_meditation_text(user_input)
-        
-        # Generate speech in a separate thread to not block
-        speech_response = generate_speech(meditation_text)
-        
-        # Save the audio file
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        audio_filename = f'meditation_{timestamp}.mp3'
-        audio_path = os.path.join(app.static_folder, audio_filename)
-        
-        with open(audio_path, 'wb') as f:
-            speech_response.stream_to_file(audio_path)
-        
-        # Return the URL for the generated audio file
-        return f'/static/{audio_filename}'
-
-    except Exception as e:
-        print(f"Error generating meditation: {str(e)}")
-        return str(e), 500
+Format your response in complete sentences that can be naturally spoken. Avoid special characters or formatting that would interrupt the flow of speech."""
 
 @app.route('/stream-meditation', methods=['POST'])
 def stream_meditation():
-    """Stream meditation audio directly from OpenAI"""
+    """Stream meditation text and audio"""
     try:
         data = request.get_json()
         user_input = data.get('input', '')
@@ -121,21 +82,7 @@ def stream_meditation():
         if not user_input:
             return 'No input provided', 400
 
-        # Generate meditation text
-        meditation_text = generate_meditation_text(user_input)
-
-        def generate():
-            with client.audio.speech.with_streaming_response.create(
-                model="tts-1",
-                voice="onyx",
-                speed=0.9,
-                input=meditation_text,
-                response_format="mp3"
-            ) as response:
-                for chunk in response.iter_bytes(chunk_size=8192):
-                    yield chunk
-
-        return Response(generate(), mimetype='audio/mpeg')
+        return streaming_manager.stream_meditation(SYSTEM_PROMPT, user_input)
 
     except Exception as e:
         print(f"Error streaming meditation: {str(e)}")

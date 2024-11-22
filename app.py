@@ -4,6 +4,9 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import random
+import hashlib
+import json
+from functools import lru_cache
 
 load_dotenv()
 
@@ -14,8 +17,10 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # Ensure static directory exists
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
-if not os.path.exists(static_dir):
-    os.makedirs(static_dir)
+cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache')
+for directory in [static_dir, cache_dir]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 # List of available background music files
 BACKGROUND_MUSIC_FILES = [
@@ -23,6 +28,27 @@ BACKGROUND_MUSIC_FILES = [
     'green-hang-handpan-hangdrum-1765.mp3',
     'relaxing-handpan-music-8d-surround-233447.mp3'
 ]
+
+@lru_cache(maxsize=100)
+def get_cached_meditation(input_text):
+    """Cache meditation responses based on input text"""
+    # Create a unique hash for the input
+    input_hash = hashlib.md5(input_text.encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{input_hash}.json")
+    
+    # Check if we have a cached response
+    if os.path.exists(cache_file):
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+def save_to_cache(input_text, response_data):
+    """Save meditation response to cache"""
+    input_hash = hashlib.md5(input_text.encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{input_hash}.json")
+    
+    with open(cache_file, 'w', encoding='utf-8') as f:
+        json.dump(response_data, f)
 
 @app.route('/')
 def home():
@@ -32,30 +58,40 @@ def home():
 def serve_static(filename):
     return send_from_directory('static', filename)
 
+def generate_meditation_text(user_input):
+    """Generate meditation text using OpenAI"""
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        temperature=0.7,
+        messages=[
+            {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English, then provide the meditation in that same language. Provide the meditation script in plain text format without any markdown, formatting, or special characters. Always start with 'This is your meditation about [topic] which intends to [intention]' (or in German: 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]'). Then continue with the guided meditation in a natural, flowing way. Keep the language simple and direct."},
+            {"role": "user", "content": f"Create a meditation script based on: {user_input}"}
+        ]
+    )
+    return response.choices[0].message.content
+
+def generate_speech(text):
+    """Generate speech using OpenAI TTS"""
+    return client.audio.speech.create(
+        model="tts-1",
+        voice="shimmer",
+        input=text
+    )
+
 @app.route('/generate-meditation', methods=['POST'])
 def generate_meditation():
     try:
         data = request.get_json()
         user_input = data.get('input', '')
         
-        # Create the meditation using OpenAI
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0.7,
-            messages=[
-                {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English, then provide the meditation in that same language. Provide the meditation script in plain text format without any markdown, formatting, or special characters. Always start with 'This is your meditation about [topic] which intends to [intention]' (or in German: 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]'). Then continue with the guided meditation in a natural, flowing way. Keep the language simple and direct."},
-                {"role": "user", "content": f"Create a meditation script based on: {user_input}"}
-            ]
-        )
+        # Check cache first
+        cached_response = get_cached_meditation(user_input)
+        if cached_response:
+            return jsonify(cached_response)
         
-        meditation_script = response.choices[0].message.content
-        
-        # Generate speech using OpenAI TTS
-        speech_response = client.audio.speech.create(
-            model="tts-1",
-            voice="shimmer",
-            input=meditation_script
-        )
+        # Generate new meditation if not cached
+        meditation_script = generate_meditation_text(user_input)
+        speech_response = generate_speech(meditation_script)
         
         # Select a random background track
         background_track = random.choice(BACKGROUND_MUSIC_FILES)
@@ -64,11 +100,16 @@ def generate_meditation():
         speech_file_path = os.path.join(static_dir, 'temp_meditation.mp3')
         speech_response.stream_to_file(speech_file_path)
         
-        return jsonify({
+        response_data = {
             "script": meditation_script,
             "audio_url": "/static/temp_meditation.mp3",
             "background_music": background_track
-        })
+        }
+        
+        # Save to cache
+        save_to_cache(user_input, response_data)
+        
+        return jsonify(response_data)
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -95,7 +95,7 @@ class StreamingManager:
                 with self.client.audio.speech.with_streaming_response.create(
                     model=DEFAULT_TTS_MODEL,
                     voice=DEFAULT_VOICE,
-                    speed=0.75,  # Slower speed for more relaxing pace
+                    speed=0.8,  # Adjusted speed for better pacing
                     response_format="mp3",
                     input=phrase
                 ) as response:

@@ -1,42 +1,109 @@
-# AI Meditation Generator
+# MindFlex AI Meditation Generator
 
-A web application that creates personalized meditation experiences using AI-generated scripts and text-to-speech technology.
+An AI-powered meditation application that creates personalized, empowering meditations in real-time, with dynamic text-to-speech streaming and background music.
 
-## Features
+## Core Features
 
-- Generate custom meditation scripts based on user input
-- Text-to-speech playback with play, pause, and stop controls
-- Clean, modern interface with a calming design
-- Powered by OpenAI's GPT-3.5 for script generation
+### Meditation Generation
+- Real-time, personalized meditation creation
+- Automatic language detection (English/German)
+- Empowerment-focused content
+- Situation-specific guidance
+- Dynamic placeholder system for personalization
 
-## Setup
+### Audio Experience
+- Streaming text-to-speech using OpenAI TTS-1
+- High-quality "onyx" voice model
+- Optimized voice speed (0.8x)
+- Soothing background music
+- Synchronized audio layers
+- Precise pause timing with [Pause] tags
 
-1. Create a `.env` file in the project root and add your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_api_key_here
-   ```
+### User Interface
+- Clean, minimalist design
+- Responsive play/pause controls
+- Real-time streaming feedback
+- Seamless audio transitions
+- Mobile-friendly layout
 
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+## Technology Stack
 
-3. Run the application:
-   ```
-   python app.py
-   ```
+### AI & Language
+- OpenAI GPT-3.5-turbo for meditation generation
+- OpenAI TTS-1 for voice synthesis
+- Custom prompt engineering for empowerment focus
+- Dynamic language detection and adaptation
 
-4. Open your browser and navigate to `http://localhost:5000`
+### Audio Processing
+- MediaSource API for streaming
+- Multi-threaded audio generation
+- Real-time chunk processing
+- Synchronized playback system
+- Background music integration
 
-## Usage
+### Backend
+- Flask web framework
+- Flask-CORS for API access
+- Gunicorn WSGI server
+- Python 3.11+
+- Environment-based configuration
 
-1. Enter your meditation preferences or topic in the text area
-2. Click "Generate Meditation" to create a personalized meditation script
-3. Use the playback controls to start, pause, or stop the meditation
+### Frontend
+- Vanilla JavaScript
+- HTML5 Audio API
+- CSS3 animations
+- Responsive design
+- State management
 
-## Technologies Used
+### Deployment
+- Continuous deployment via GitHub
+- Render.com hosting
+- Environment variable management
+- Production-grade WSGI server
 
-- Backend: Flask (Python)
-- Frontend: HTML, CSS, JavaScript
-- AI: OpenAI GPT-3.5
-- Audio: Web Speech API
+## Meditation Capabilities
+
+### Language Support
+- English meditations with natural flow
+- German meditations with native phrasing
+- Automatic language detection
+- Consistent tone across languages
+
+### Content Focus
+- Situation handling strategies
+- Confidence building
+- Personal empowerment
+- Action-oriented guidance
+- Success visualization
+
+### Audio Features
+- Natural speech patterns
+- Strategic pause placement
+- Ambient background music
+- Volume balancing
+- Seamless transitions
+
+## Security & Performance
+
+### Security
+- Secure API key management
+- Environment-based configuration
+- CORS protection
+- Input sanitization
+
+### Performance
+- Optimized streaming
+- Efficient chunk processing
+- Minimal latency
+- Responsive interface
+- Error resilience
+
+## Deployment
+
+The application is automatically deployed to Render.com via GitHub integration. Updates to the main branch trigger automatic rebuilds and deployments.
+
+## Environment Variables
+
+Required for deployment:
+- `OPENAI_API_KEY`: OpenAI API key for text and speech generation
+- `FLASK_ENV`: Set to 'production' for deployment

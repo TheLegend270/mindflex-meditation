@@ -3,7 +3,6 @@ from flask_cors import CORS
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-import yt_dlp
 import random
 
 load_dotenv()
@@ -14,34 +13,13 @@ CORS(app)
 # Configure OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-# List of available background music tracks
-BACKGROUND_TRACKS = [
-    'background_music.mp3',  # Original track
+# List of available background music files
+BACKGROUND_MUSIC_FILES = [
+    'background_music.mp3',
     'green-hang-handpan-hangdrum-1765.mp3',
     'hari-om-namaha-shivaya-with-handpan-music-240022.mp3',
     'relaxing-handpan-music-8d-surround-233447.mp3'
 ]
-
-# Download YouTube audio if not already downloaded
-def download_background_music(url):
-    output_path = os.path.join('static', 'background_music.mp3')
-    if not os.path.exists(output_path):
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'outtmpl': output_path,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    return 'background_music.mp3'
-
-# Download the background music on startup
-BACKGROUND_MUSIC_URL = 'https://www.youtube.com/watch?v=CIyiHdxE4gw'
-download_background_music(BACKGROUND_MUSIC_URL)
 
 @app.route('/')
 def home():
@@ -75,7 +53,7 @@ The meditation should adapt seamlessly to the specific details of the stressor, 
         )
         
         # Select a random background track
-        background_track = random.choice(BACKGROUND_TRACKS)
+        background_track = random.choice(BACKGROUND_MUSIC_FILES)
         
         meditation_script = response.choices[0].message.content
         return jsonify({

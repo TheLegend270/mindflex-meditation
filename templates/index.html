@@ -163,15 +163,13 @@
                 backgroundMusic.load();
                 backgroundMusic.oncanplaythrough = () => {
                     backgroundMusic.play().then(() => {
-                        setTimeout(() => {
-                            meditationAudio.play().then(() => {
-                                setButtonState('pause');
-                                isPlaying = true;
-                            }).catch(error => {
-                                console.error('Meditation audio playback error:', error);
-                                setButtonState('play');
-                            });
-                        }, 4000); // 4-second delay before voice starts
+                        meditationAudio.play().then(() => {
+                            setButtonState('pause');
+                            isPlaying = true;
+                        }).catch(error => {
+                            console.error('Meditation audio playback error:', error);
+                            setButtonState('play');
+                        });
                     }).catch(error => {
                         console.error('Background music playback error:', error);
                         setButtonState('play');

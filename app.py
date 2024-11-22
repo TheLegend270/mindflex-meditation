@@ -12,6 +12,11 @@ CORS(app)
 
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
+# Ensure static directory exists
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
 # List of available background music files
 BACKGROUND_MUSIC_FILES = [
     'background_music.mp3',
@@ -38,7 +43,7 @@ def generate_meditation():
             model="gpt-3.5-turbo",
             temperature=0.7,
             messages=[
-                {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. Provide the meditation script in plain text format without any markdown, formatting, or special characters. Always start with 'This is your meditation about [topic] which intends to [intention].' Then continue with the guided meditation in a natural, flowing way. Keep the language simple and direct."},
+                {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English, then provide the meditation in that same language. Provide the meditation script in plain text format without any markdown, formatting, or special characters. Always start with 'This is your meditation about [topic] which intends to [intention]' (or in German: 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]'). Then continue with the guided meditation in a natural, flowing way. Keep the language simple and direct."},
                 {"role": "user", "content": f"Create a meditation script based on: {user_input}"}
             ]
         )
@@ -48,7 +53,7 @@ def generate_meditation():
         # Generate speech using OpenAI TTS
         speech_response = client.audio.speech.create(
             model="tts-1",
-            voice="shimmer", # Options: alloy, echo, fable, onyx, nova, shimmer
+            voice="shimmer",
             input=meditation_script
         )
         
@@ -56,7 +61,7 @@ def generate_meditation():
         background_track = random.choice(BACKGROUND_MUSIC_FILES)
         
         # Save the audio temporarily
-        speech_file_path = os.path.join('static', 'temp_meditation.mp3')
+        speech_file_path = os.path.join(static_dir, 'temp_meditation.mp3')
         speech_response.stream_to_file(speech_file_path)
         
         return jsonify({

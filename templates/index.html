@@ -203,45 +203,42 @@
                 return;
             }
 
-            // Set up meditation audio
-            if (isNewMeditation) {
-                // Pre-load meditation audio
-                try {
-                    const response = await fetch(audioUrl);
-                    const blob = await response.blob();
-                    meditationAudio.src = URL.createObjectURL(blob);
-                    await meditationAudio.load();
-                } catch (error) {
-                    console.error('Error loading meditation audio:', error);
-                    setButtonState('play');
-                    return;
-                }
-
-                meditationAudio.onended = () => {
-                    fadeOutBackgroundMusic();
-                    setButtonState('play');
-                    isPlaying = false;
-                };
-            }
-
             // Set up background music
             backgroundMusic.volume = 0.08;  // 8% volume
             backgroundMusic.playbackRate = 0.8;  // Music speed at 80%
 
             try {
-                // Start background music immediately
+                // Show loading for 4 seconds, then start music
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 backgroundMusic.play().catch(error => {
                     console.error('Background music playback error:', error);
                 });
+                setButtonState('pause');
+                isPlaying = true;
 
-                // Start meditation audio as soon as possible
-                meditationAudio.play().then(() => {
-                    setButtonState('pause');
-                    isPlaying = true;
-                }).catch(error => {
-                    console.error('Meditation audio playback error:', error);
-                    setButtonState('play');
-                });
+                // Set up meditation audio
+                if (isNewMeditation) {
+                    try {
+                        // Pre-load meditation audio in background
+                        const response = await fetch(audioUrl);
+                        const blob = await response.blob();
+                        meditationAudio.src = URL.createObjectURL(blob);
+                        await meditationAudio.load();
+                        
+                        meditationAudio.onended = () => {
+                            fadeOutBackgroundMusic();
+                            setButtonState('play');
+                            isPlaying = false;
+                        };
+
+                        // Start meditation audio when ready
+                        meditationAudio.play().catch(error => {
+                            console.error('Meditation audio playback error:', error);
+                        });
+                    } catch (error) {
+                        console.error('Error loading meditation audio:', error);
+                    }
+                }
             } catch (error) {
                 console.error('Playback error:', error);
                 setButtonState('play');

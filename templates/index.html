@@ -106,8 +106,7 @@
         </div>
     </div>
     <script>
-        let currentUtterance = null;
-        const synth = window.speechSynthesis;
+        let meditationAudio = new Audio();
         let backgroundMusic = new Audio();
         const generateBtn = document.getElementById('generate-btn');
         let meditationScript = '';
@@ -131,16 +130,13 @@
             }
         }
 
-        function playMeditation(text, isNewMeditation = false) {
+        function playMeditation(audioUrl, isNewMeditation = false) {
             // If it's a new meditation, cancel any existing one
             if (isNewMeditation) {
-                if (currentUtterance && speechSynthesis.speaking) {
-                    speechSynthesis.cancel();
-                }
-                if (backgroundMusic) {
-                    backgroundMusic.pause();
-                    backgroundMusic.currentTime = 0;
-                }
+                meditationAudio.pause();
+                meditationAudio.currentTime = 0;
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
             }
 
             // If we're already playing and it's not a new meditation, just return
@@ -148,27 +144,11 @@
                 return;
             }
 
-            // Create new utterance only if it's a new meditation or we don't have one
-            if (isNewMeditation || !currentUtterance) {
-                currentUtterance = new SpeechSynthesisUtterance(text);
-                currentUtterance.rate = 0.9;
-                currentUtterance.pitch = 1;
-                currentUtterance.volume = 1.0;
-
-                currentUtterance.onstart = () => {
-                    setButtonState('pause');
-                    isPlaying = true;
-                };
-
-                currentUtterance.onend = () => {
-                    // Start fading out the background music
+            // Set up meditation audio
+            if (isNewMeditation) {
+                meditationAudio.src = audioUrl;
+                meditationAudio.onended = () => {
                     fadeOutBackgroundMusic();
-                    setButtonState('play');
-                    isPlaying = false;
-                };
-
-                currentUtterance.onerror = (event) => {
-                    console.error('Speech synthesis error:', event);
                     setButtonState('play');
                     isPlaying = false;
                 };
@@ -180,10 +160,11 @@
             // Start playback
             try {
                 backgroundMusic.play();
-                synth.cancel(); // Cancel any ongoing speech
                 setTimeout(() => {
-                    synth.speak(currentUtterance);
-                }, 4000); // Changed from 2000 to 4000 for 4-second delay
+                    meditationAudio.play();
+                    setButtonState('pause');
+                    isPlaying = true;
+                }, 4000); // 4-second delay before voice starts
             } catch (error) {
                 console.error('Playback error:', error);
                 setButtonState('play');
@@ -191,49 +172,43 @@
         }
 
         function fadeOutBackgroundMusic() {
-            const fadeOutDuration = 30000; // 30 seconds in milliseconds
+            const fadeOutDuration = 30000; // 30 seconds
             const startVolume = backgroundMusic.volume;
-            const fadeSteps = 100; // Number of steps for smooth fade
+            const fadeSteps = 100;
             const volumeStep = startVolume / fadeSteps;
             const stepDuration = fadeOutDuration / fadeSteps;
 
             let currentStep = 0;
-            
             const fadeInterval = setInterval(() => {
                 currentStep++;
-                if (currentStep <= fadeSteps) {
-                    backgroundMusic.volume = startVolume - (volumeStep * currentStep);
-                } else {
+                if (currentStep >= fadeSteps) {
                     clearInterval(fadeInterval);
                     backgroundMusic.pause();
                     backgroundMusic.currentTime = 0;
-                    backgroundMusic.volume = 0.15; // Reset volume for next use
+                } else {
+                    backgroundMusic.volume = startVolume - (currentStep * volumeStep);
                 }
             }, stepDuration);
         }
 
         function pauseMeditation() {
-            if (currentUtterance) {
-                speechSynthesis.pause();
-            }
-            if (backgroundMusic) {
-                backgroundMusic.pause();
-            }
-            isPlaying = false;
+            meditationAudio.pause();
+            backgroundMusic.pause();
             setButtonState('play');
+            isPlaying = false;
         }
 
         function resumeMeditation() {
-            if (currentUtterance) {
-                speechSynthesis.resume();
-                backgroundMusic.play();
-                isPlaying = true;
-                setButtonState('pause');
-            }
+            meditationAudio.play();
+            backgroundMusic.play();
+            setButtonState('pause');
+            isPlaying = true;
         }
 
         generateBtn.addEventListener('click', async () => {
-            // If we already have a meditation script
+            const userInput = document.getElementById('user-input').value;
+            
+            // If we already have a meditation playing
             if (meditationScript) {
                 if (isPlaying) {
                     pauseMeditation();
@@ -243,8 +218,10 @@
                 return;
             }
 
-            const userInput = document.getElementById('user-input').value;
-            if (!userInput) return;
+            if (!userInput.trim()) {
+                alert('Please enter your meditation topic.');
+                return;
+            }
 
             setButtonState('loading');
 
@@ -254,33 +231,38 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ input: userInput })
+                    body: JSON.stringify({ input: userInput }),
                 });
 
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
                 const data = await response.json();
-                if (data.error) throw new Error(data.error);
-
-                // Store the script but don't display it
                 meditationScript = data.script;
-
-                // Set up background music
+                
+                // Start playing the meditation with the new audio URL
+                playMeditation(data.audio_url, true);
+                
+                // Set up background music source
                 backgroundMusic.src = `/static/${data.background_music}`;
-                backgroundMusic.loop = true;
 
-                // Play meditation immediately
-                playMeditation(meditationScript, true);
             } catch (error) {
-                alert('Error generating meditation: ' + error.message);
+                console.error('Error:', error);
+                alert('Failed to generate meditation. Please try again.');
                 setButtonState('play');
             }
         });
 
-        // Fix for Chrome's speech synthesis issue
-        window.onbeforeunload = () => {
-            if (speechSynthesis.speaking) {
-                speechSynthesis.cancel();
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (meditationAudio) {
+                meditationAudio.pause();
             }
-        };
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+            }
+        });
     </script>
 </body>
 </html>

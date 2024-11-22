@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
 from openai import OpenAI
 import os
@@ -10,7 +10,6 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# Configure OpenAI
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # List of available background music files
@@ -45,12 +44,25 @@ def generate_meditation():
             ]
         )
         
+        meditation_script = response.choices[0].message.content
+        
+        # Generate speech using OpenAI TTS
+        speech_response = client.audio.speech.create(
+            model="tts-1",
+            voice="shimmer", # Options: alloy, echo, fable, onyx, nova, shimmer
+            input=meditation_script
+        )
+        
         # Select a random background track
         background_track = random.choice(BACKGROUND_MUSIC_FILES)
         
-        meditation_script = response.choices[0].message.content
+        # Save the audio temporarily
+        speech_file_path = os.path.join('static', 'temp_meditation.mp3')
+        speech_response.stream_to_file(speech_file_path)
+        
         return jsonify({
             "script": meditation_script,
+            "audio_url": "/static/temp_meditation.mp3",
             "background_music": background_track
         })
     

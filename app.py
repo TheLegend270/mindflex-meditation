@@ -61,16 +61,15 @@ def home():
 def serve_static(filename):
     return send_from_directory('static', filename)
 
-SYSTEM_PROMPT = """You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English. Then, provide the ENTIRE meditation in that same language, including the introduction. 
-
-For English, start with 'This is your meditation about [topic] which intends to [intention]...'. 
-For German, start with 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]...'. 
-
-NEVER mix languages - if the input is German, the entire meditation must be in German, if it's English, everything must be in English. 
-
-Keep the language simple and direct. Add '...' after each sentence to create natural pauses. This helps create a slower, more meditative pace.
-
-Format your response in complete sentences that can be naturally spoken. Avoid special characters or formatting that would interrupt the flow of speech."""
+def create_system_prompt(language):
+    if language == "de":
+        return """Du bist ein professioneller Meditationsleiter. Erstelle eine beruhigende und personalisierte Meditation basierend auf der Eingabe des Benutzers.
+        Verwende eine sanfte, beruhigende Sprache. Füge '<break time="2s" />' hinter jeden Satz ein, um natürliche Pausen zu erzeugen.
+        Sprich den Benutzer direkt an und führe ihn durch die Meditation. Die Meditation sollte etwa 5-7 Minuten dauern."""
+    else:
+        return """You are a professional meditation guide. Create a calming and personalized meditation based on the user's input.
+        Use gentle, soothing language. Add '<break time="2s" />' after each sentence to create natural pauses.
+        Address the user directly and guide them through the meditation. The meditation should last about 5-7 minutes."""
 
 @app.route('/stream-meditation', methods=['POST'])
 def stream_meditation():
@@ -82,7 +81,10 @@ def stream_meditation():
         if not user_input:
             return 'No input provided', 400
 
-        return streaming_manager.stream_meditation(SYSTEM_PROMPT, user_input)
+        language = "de" if user_input.startswith("de") else "en"
+        system_prompt = create_system_prompt(language)
+
+        return streaming_manager.stream_meditation(system_prompt, user_input)
 
     except Exception as e:
         print(f"Error streaming meditation: {str(e)}")

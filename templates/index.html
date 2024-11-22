@@ -46,17 +46,15 @@
             gap: 20px;
             align-items: center;
         }
-        textarea {
+        input {
             flex: 1;
             padding: 15px;
             border: 1px solid #0B446F;
             border-radius: 8px;
-            resize: none;
-            height: 100px;
             background: #0B446F;
             color: white;
         }
-        textarea::placeholder {
+        input::placeholder {
             color: rgba(255, 255, 255, 0.9);
         }
         .play-button {
@@ -99,7 +97,7 @@
     <img src="/static/Logo.png" alt="MindFlex Logo" class="logo">
     <div class="container">
         <div class="input-container">
-            <textarea id="user-input" placeholder="Insert the stressor, the appraisal and the consequence the user is facing in order to generate a mindflex meditation... (this process will be automated later)"></textarea>
+            <input type="text" id="user-input" placeholder="Enter stressor, appraisal, and consequence to create a Mindflex meditation (automation coming soon)." />
             <button id="generate-btn" class="play-button">
                 <i class="fas fa-play"></i>
             </button>

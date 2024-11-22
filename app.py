@@ -64,7 +64,7 @@ def generate_meditation_text(user_input):
         model="gpt-3.5-turbo",
         temperature=0.7,
         messages=[
-            {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English, then provide the meditation in that same language. Provide the meditation script in plain text format without any markdown, formatting, or special characters. Always start with 'This is your meditation about [topic] which intends to [intention]' (or in German: 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]'). Then continue with the guided meditation in a natural, flowing way. Keep the language simple and direct."},
+            {"role": "system", "content": "You are a meditation guide creating calming, mindful meditations. First, detect if the user's input is in German or English. Then, provide the ENTIRE meditation in that same language, including the introduction. For English, start with 'This is your meditation about [topic] which intends to [intention]'. For German, start with 'Dies ist deine Meditation über [Thema], die darauf abzielt [Intention]'. NEVER mix languages - if the input is German, the entire meditation must be in German, if it's English, everything must be in English. Keep the language simple, direct, and maintain a slow, calming pace."},
             {"role": "user", "content": f"Create a meditation script based on: {user_input}"}
         ]
     )
@@ -75,6 +75,7 @@ def generate_speech(text):
     return client.audio.speech.create(
         model="tts-1",
         voice="shimmer",
+        speed=0.85,  # Slowing down the speech to 85% of normal speed
         input=text
     )
 

@@ -159,12 +159,24 @@
 
             // Start playback
             try {
-                backgroundMusic.play();
-                setTimeout(() => {
-                    meditationAudio.play();
-                    setButtonState('pause');
-                    isPlaying = true;
-                }, 4000); // 4-second delay before voice starts
+                // Make sure background music is loaded before playing
+                backgroundMusic.load();
+                backgroundMusic.oncanplaythrough = () => {
+                    backgroundMusic.play().then(() => {
+                        setTimeout(() => {
+                            meditationAudio.play().then(() => {
+                                setButtonState('pause');
+                                isPlaying = true;
+                            }).catch(error => {
+                                console.error('Meditation audio playback error:', error);
+                                setButtonState('play');
+                            });
+                        }, 4000); // 4-second delay before voice starts
+                    }).catch(error => {
+                        console.error('Background music playback error:', error);
+                        setButtonState('play');
+                    });
+                };
             } catch (error) {
                 console.error('Playback error:', error);
                 setButtonState('play');
@@ -199,10 +211,16 @@
         }
 
         function resumeMeditation() {
-            meditationAudio.play();
-            backgroundMusic.play();
-            setButtonState('pause');
-            isPlaying = true;
+            Promise.all([
+                meditationAudio.play(),
+                backgroundMusic.play()
+            ]).then(() => {
+                setButtonState('pause');
+                isPlaying = true;
+            }).catch(error => {
+                console.error('Resume playback error:', error);
+                setButtonState('play');
+            });
         }
 
         generateBtn.addEventListener('click', async () => {
@@ -241,11 +259,11 @@
                 const data = await response.json();
                 meditationScript = data.script;
                 
+                // Set up background music source before playing
+                backgroundMusic.src = `/static/${data.background_music}`;
+                
                 // Start playing the meditation with the new audio URL
                 playMeditation(data.audio_url, true);
-                
-                // Set up background music source
-                backgroundMusic.src = `/static/${data.background_music}`;
 
             } catch (error) {
                 console.error('Error:', error);

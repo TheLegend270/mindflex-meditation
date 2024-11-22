@@ -16,7 +16,6 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 BACKGROUND_MUSIC_FILES = [
     'background_music.mp3',
     'green-hang-handpan-hangdrum-1765.mp3',
-    'hari-om-namaha-shivaya-with-handpan-music-240022.mp3',
     'relaxing-handpan-music-8d-surround-233447.mp3'
 ]
 

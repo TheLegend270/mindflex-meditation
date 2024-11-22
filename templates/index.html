@@ -225,16 +225,23 @@
             }
 
             // Set up background music
-            backgroundMusic.volume = 0.08;  // Changed to 8% volume
+            backgroundMusic.volume = 0.08;  // 8% volume
             backgroundMusic.playbackRate = 0.8;  // Music speed at 80%
 
             try {
-                // Start both audio streams with delay for background music
-                await new Promise(resolve => setTimeout(resolve, 9000)); // Wait 9 seconds
-                await backgroundMusic.play();
-                await meditationAudio.play();
-                setButtonState('pause');
-                isPlaying = true;
+                // Start background music immediately
+                backgroundMusic.play().catch(error => {
+                    console.error('Background music playback error:', error);
+                });
+
+                // Start meditation audio as soon as possible
+                meditationAudio.play().then(() => {
+                    setButtonState('pause');
+                    isPlaying = true;
+                }).catch(error => {
+                    console.error('Meditation audio playback error:', error);
+                    setButtonState('play');
+                });
             } catch (error) {
                 console.error('Playback error:', error);
                 setButtonState('play');

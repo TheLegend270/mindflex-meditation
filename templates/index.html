@@ -163,41 +163,53 @@
             setButtonState('loading');
             
             try {
-                // Start 4-second loading animation and request meditation in parallel
-                const [_, response] = await Promise.all([
-                    new Promise(resolve => setTimeout(resolve, 4000)),
-                    fetch('/generate-meditation', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ input: input })
-                    })
-                ]);
-
-                if (!response.ok) throw new Error('Network response was not ok');
-                
-                const audioUrl = await response.text();
+                // Start 4-second loading animation
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 
                 // Start music immediately after loading animation
                 backgroundMusic.play().catch(console.error);
                 setButtonState('pause');
                 isPlaying = true;
 
-                // Load and play meditation audio in background
-                try {
-                    const audioResponse = await fetch(audioUrl);
-                    const blob = await audioResponse.blob();
-                    meditationAudio.src = URL.createObjectURL(blob);
-                    await meditationAudio.load();
-                    meditationAudio.play().catch(console.error);
-                    
-                    meditationAudio.onended = () => {
-                        fadeOutBackgroundMusic();
-                        setButtonState('play');
-                        isPlaying = false;
-                    };
-                } catch (error) {
-                    console.error('Error loading meditation audio:', error);
-                }
+                // Start streaming meditation audio
+                const response = await fetch('/stream-meditation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input: input })
+                });
+
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                // Create MediaSource for streaming
+                const mediaSource = new MediaSource();
+                meditationAudio.src = URL.createObjectURL(mediaSource);
+
+                mediaSource.addEventListener('sourceopen', async () => {
+                    const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+                    const reader = response.body.getReader();
+
+                    // Read streaming data
+                    while (true) {
+                        const {done, value} = await reader.read();
+                        if (done) break;
+                        
+                        // Wait for sourceBuffer to be ready
+                        if (!sourceBuffer.updating) {
+                            sourceBuffer.appendBuffer(value);
+                        }
+                    }
+
+                    mediaSource.endOfStream();
+                });
+
+                meditationAudio.play().catch(console.error);
+                
+                meditationAudio.onended = () => {
+                    fadeOutBackgroundMusic();
+                    setButtonState('play');
+                    isPlaying = false;
+                };
+
             } catch (error) {
                 console.error('Error:', error);
                 setButtonState('play');

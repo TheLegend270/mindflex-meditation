@@ -111,5 +111,35 @@ def generate_meditation():
         print(f"Error generating meditation: {str(e)}")
         return str(e), 500
 
+@app.route('/stream-meditation', methods=['POST'])
+def stream_meditation():
+    """Stream meditation audio directly from OpenAI"""
+    try:
+        data = request.get_json()
+        user_input = data.get('input', '')
+
+        if not user_input:
+            return 'No input provided', 400
+
+        # Generate meditation text
+        meditation_text = generate_meditation_text(user_input)
+
+        def generate():
+            with client.audio.speech.with_streaming_response.create(
+                model="tts-1",
+                voice="onyx",
+                speed=0.9,
+                input=meditation_text,
+                response_format="mp3"
+            ) as response:
+                for chunk in response.iter_bytes(chunk_size=8192):
+                    yield chunk
+
+        return Response(generate(), mimetype='audio/mpeg')
+
+    except Exception as e:
+        print(f"Error streaming meditation: {str(e)}")
+        return str(e), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
